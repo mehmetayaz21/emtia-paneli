@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMA 200 Üzerindeki Emtialar Paneli</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            font-family: 'Inter', sans-serif;
+            padding-left: 260px;
+            padding-right: 260px;
+            min-height: 100vh;
+            margin: 0;
+            color: #f8f9fa;
+        }
+        
+        @keyframes gradientBG {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+        
+        /* Sol Panel - Yükselenler */
+        .side-panel {
+            position: fixed;
+            top: 20px;
+            width: 250px;
+            max-height: calc(100vh - 40px);
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .left-panel {
+            left: 20px;
+            border-left: 3px solid #2ecc71;
+        }
+        
+        .right-panel {
+            right: 20px;
+            border-right: 3px solid #e74c3c;
+        }
+        
+        .panel-header {
+            padding: 12px 15px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            background: rgba(0,0,0,0.2);
+        }
+        
+        .alert-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 5px;
+        }
+        
+        .alert-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            margin: 4px 5px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+        }
+        
+        .alert-item:hover {
+            background: rgba(255,255,255,0.15);
+            transform: translateX(5px);
+        }
+        
+        .alert-symbol {
+            font-weight: 500;
+            width: 70px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: #fff;
+        }
+        
+        .alert-price {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.85rem;
+            text-align: right;
+            width: 70px;
+            color: #fff;
+        }
+        
+        .alert-change {
+            font-weight: 600;
+            width: 60px;
+            text-align: right;
+            font-size: 0.9rem;
+        }
+        
+        .change-rise {
+            color: #2ecc71;
+            text-shadow: 0 0 5px rgba(46, 204, 113, 0.5);
+        }
+        
+        .change-fall {
+            color: #e74c3c;
+            text-shadow: 0 0 5px rgba(231, 76, 60, 0.5);
+        }
+        
+        .no-alerts {
+            color: rgba(255,255,255,0.6);
+            text-align: center;
+            padding: 20px 10px;
+            font-size: 0.85rem;
+        }
+        
+        .panel-box {
+            background:#ffffff;
+            border-radius:12px;
+            box-shadow:0 8px 20px rgba(0,0,0,0.06);
+            margin: 0 auto;
+            max-width: 1200px;
+        }
+        
+        /* Mevcut stiller */
+        .status-text { font-size: 0.9rem; }
+        .badge-pos { background-color:#1ca97c; }
+        .badge-neg { background-color:#e74c3c; }
+        thead th { position: sticky; top: 0; background: #f8f9fa; z-index: 1; }
+        .ratio-high { color:#27ae60; font-weight:bold; }
+        .ratio-low { color:#e74c3c; font-weight:bold; }
+        .zscore-high { color:#27ae60; font-weight:bold; }
+        .zscore-low { color:#e74c3c; font-weight:bold; }
+    </style>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <!-- DataLabels plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <script>
+        // Her 30 saniyede bir sayfayı yenile
+        setTimeout(function() {
+            location.reload();
+        }, 30000);
+    </script>
+</head>
+<body>
+    <!-- Sol Panel - Yükselenler -->
+    <div class="side-panel left-panel">
+        <div class="panel-header">
+            <span><i class="bi bi-arrow-up-circle"></i> YÜKSELENLER</span>
+            <span class="alert-count">{{ rising_alerts|length }}</span>
+        </div>
+        <div class="alert-list">
+            {% if rising_alerts %}
+                {% for alert in rising_alerts %}
+                    <div class="alert-item">
+                        <span class="alert-symbol" title="{{ alert.symbol }}">{{ alert.symbol }}</span>
+                        <span class="alert-price">{{ "%.4f"|format(alert.price) }}</span>
+                        <span class="alert-change change-rise">+%{{ "%.2f"|format(alert.change) }}</span>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-alerts">
+                    <i class="bi bi-arrow-up-circle fs-4 d-block mb-1"></i>
+                    <small>Yükselen yok</small>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Sağ Panel - Düşenler -->
+    <div class="side-panel right-panel">
+        <div class="panel-header">
+            <span><i class="bi bi-arrow-down-circle"></i> DÜŞENLER</span>
+            <span class="alert-count">{{ falling_alerts|length }}</span>
+        </div>
+        <div class="alert-list">
+            {% if falling_alerts %}
+                {% for alert in falling_alerts %}
+                    <div class="alert-item">
+                        <span class="alert-symbol" title="{{ alert.symbol }}">{{ alert.symbol }}</span>
+                        <span class="alert-price">{{ "%.4f"|format(alert.price) }}</span>
+                        <span class="alert-change change-fall">-%{{ "%.2f"|format(alert.change) }}</span>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-alerts">
+                    <i class="bi bi-arrow-down-circle fs-4 d-block mb-1"></i>
+                    <small>Düşen yok</small>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Ana İçerik -->
+    <div class="container py-4 panel-box">
+        <div class="d-flex justify-content-end align-items-center mb-3">
+            <span class="status-text text-muted">Son güncelleme: {{ last_update }} (Oto: 30sn)</span>
+            <div class="vr mx-2 bg-secondary"></div>
+        </div>
+        <!-- Grafik üstte -->
+        <div class="mb-4">
+            <h5>Grafik</h5>
+            <canvas id="topChart" height="200"></canvas>
+        </div>
+        <div style="overflow-x: auto;">
+            <table id="emtia-table" class="table table-striped table-hover" style="width:100%; min-width:900px;">
+                <thead>
+                    <tr>
+                        <th>Sembol</th>
+                        <th>Son Fiyat</th>
+                        <th>EMA 200</th>
+                        <th>Fark (%)</th>
+                        <th>Ratio</th>
+                        <th>Z-Score</th>
+                        <th>Skor</th>
+                        <th>Zaman</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if emtialar %}
+                        {% for emtia in emtialar %}
+                        <tr>
+                            <td><a href="/history/{{ emtia.symbol }}" style="color: #333; text-decoration: none;">{{ emtia.symbol }}</a></td>
+                            <td>{{ emtia.close }}</td>
+                            <td>{{ emtia.ema200 }}</td>
+                            <td><span class="badge {{ 'badge-pos' if emtia.fark >= 0 else 'badge-neg' }}">{{ emtia.fark }}%</span></td>
+                            <td>
+                                {% set r = emtia.ratio|default(1) %}
+                                <span class="badge {% if r > 1.05 %}badge-pos{% elif r < 0.95 %}badge-neg{% else %}bg-secondary{% endif %}">
+                                    {{ r }}
+                                </span>
+                            </td>
+                            <td>
+                                {% set z = emtia.zscore|default(0) %}
+                                <span class="badge {% if z > 2 %}badge-pos{% elif z < -2 %}badge-neg{% else %}bg-warning text-dark{% endif %}">
+                                    {{ z }}
+                                </span>
+                            </td>
+                            <td>{{ emtia.diff_ratio_avg }}</td>
+                            <td>{{ emtia.zaman }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8">Veri bulunamadı.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        <!-- jQuery (Bootstrap & DataTables için) -->
+        <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+        <!-- Bootstrap JS -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        <!-- DataTables -->
+        <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+        <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" />
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                if (window.jQuery) {
+                    $('#emtia-table').DataTable({
+                        order: [[3, 'desc']],   // Fark (%) sütunu (0-index)
+                        paging: false          // Sayfalama kapalı; tüm veriler tek sayfada
+                    });
+                }
+            });
+        </script>
+        <script>
+            // Çoklu oran çizgileri çizimi
+            const series = {{ chart_series|tojson }};
+            const xAxis  = {{ x_axis|tojson }};
+            const datasets = series.map((s,i) => ({
+                label: s.label,
+                data:  s.data,
+                borderColor: `hsl(${(i*37)%360},70%,50%)`,
+                borderWidth: 1,
+                tension: 0.3,
+                pointRadius: (ctx) => ctx.dataIndex === ctx.dataset.data.length - 1 ? 4 : 0,
+                fill: false
+            }));
+
+            const ctx = document.getElementById('topChart').getContext('2d');
+            Chart.register(ChartDataLabels);
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: xAxis,
+                    datasets: datasets
+                },
+                options: {
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                title: (items) => series[items[0].datasetIndex].label,
+                                label: (item) => ((item.raw - 1) * 100).toFixed(2) + '%'
+                            }
+                        },
+                        legend: { display: false },
+                        datalabels: {
+                            display: (ctx) => ctx.dataIndex === ctx.dataset.data.length - 1 && ctx.dataset.data[ctx.dataIndex] >= 1.04,
+                            align: 'right',
+                            anchor: 'left',
+                            formatter: (value, ctx) => ctx.dataset.label,
+                            color: ctx => ctx.dataset.borderColor,
+                            backgroundColor: 'rgba(255,255,255,0.8)',
+                            borderColor: ctx => ctx.dataset.borderColor,
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            padding: 2,
+                            font: { weight: 'bold', size: 10 },
+                            clip: false,
+                            offset: 5
+                        }
+                    },
+                    layout: {
+                        padding: {
+                            right: 120
+                        }
+                    },
+                    scales: {
+                        y: {
+                            min: 1.0,    // %0 fark
+                            max: 1.2,    // %20 fark
+                            ticks: {
+                                stepSize: 0.02,  // Her %2'de bir çizgi
+                                callback: function(value) {
+                                    return ((value - 1) * 100).toFixed(0) + '%';
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Fark %',
+                                color: '#666'
+                            }
+                        },
+                        x: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        </script>
+    </div>
+</body>
+</html>
