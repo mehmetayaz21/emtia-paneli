@@ -1,3 +1,4 @@
+import os
 from flask import Flask, render_template, request
 import requests
 import pandas as pd
@@ -11,7 +12,15 @@ import threading
 MAX_SYMBOLS = 300  # Önceden 100'dü; performansa göre değiştirilebilir
 
 app = Flask(__name__)
+# Diğer route ve fonksiyonların burada yer almalı
 
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)# Diğer route ve fonksiyonların burada yer almalı
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
 # Global değişkenler
 price_history = {}  # {symbol: [(timestamp, price), ...]}
 alert_threshold = 0.4  # %0.4 değişim uyarısı
